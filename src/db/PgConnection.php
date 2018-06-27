@@ -56,7 +56,7 @@ class PgConnection extends Connection
         $conn = $this->getConnection();
         $conn->beginTransaction();
         try {
-            $ts = (new \DateTime())->format('Y-m-d H:i:s');
+            $ts = (new \DateTime())->format('Y-m-d H:i:s.u');
             $insertMasterLogCommand = <<<SQL
 INSERT INTO {$this->schema}.log_record(table_name, rec_id, ts_change, rec_type, by_user)
   VALUES (:table_name, :rec_id, :ts_change, :rec_type, :by_user)
@@ -82,17 +82,46 @@ RETURNING id
 SQL;
                 $stmtDetail = $conn->prepare($insertDetailLogCommand);
                 $stmtDetail->bindValue(':id_log_record', $masterId, PDO::PARAM_INT);
-                if (!$record['oldValues']) {
-                    throw new \PDOException('Required old values array is missing or empty.');
+                switch ($record['recType']) {
+                    case 'C' :
+                        if (!isset($record['newValues'])) {
+                            throw new PDOException('Required array for new values for create record is missing or empty.');
+                        }
+                        break;
+                    case 'U' :
+                        if (!isset($record['oldValues'])) {
+                            throw new PDOException('Required array for old values for update record is missing or empty.');
+                        }
+                        if (!isset($record['newValues'])) {
+                            throw new PDOException('Required array for new values for update record is missing or empty.');
+                        }
+                        break;
+                    case 'D' :
+                        if (!isset($record['oldValues'])) {
+                            throw new PDOException('Required array for old values for delete record is missing or empty.');
+                        }
+                        break;
                 }
-                foreach ($record['oldValues'] as $k => $v) {
+                $valuesIter = ($record['recType'] == 'C' ? $record['newValues'] : $record['oldValues']);
+                foreach ($valuesIter as $k => $v) {
                     $stmtDetail->bindValue(':col_name', $k, PDO::PARAM_STR);
-                    $stmtDetail->bindValue(':old_value', $v, PDO::PARAM_STR);
-                    if (!isset($record['newValues'][$k]) && $record['recType'] == 'U') {
-                        throw new PDOException('Required changed attribute not present in array with new values.');
+                    switch ($record['recType']) {
+                        case 'C' :
+                            $stmtDetail->bindValue(':old_value', null);
+                            $stmtDetail->bindValue(':new_value', $v, PDO::PARAM_STR);
+                            break;
+                        case 'U' :
+                            if (!isset($record['newValues'][$k])) {
+                                throw new PDOException('Required changed attribute not present in array with new values.');
+                            }
+                            $stmtDetail->bindValue(':old_value', $v, PDO::PARAM_STR);
+                            $stmtDetail->bindValue(':new_value', $record['newValues'][$k], PDO::PARAM_STR);
+                            break;
+                        case 'D' :
+                            $stmtDetail->bindValue(':old_value', $v, PDO::PARAM_STR);
+                            $stmtDetail->bindValue(':new_value', null);
+                            break;
                     }
-                    $newValue = isset($record['newValues'][$k]) ? $record['newValues'][$k] : null;
-                    $stmtDetail->bindValue(':new_value', $newValue, PDO::PARAM_STR);
                     $stmtDetail->execute();
                     $detailLogId = $stmtDetail->fetch(PDO::FETCH_NUM);
                     if ($detailLogId === false) {
@@ -111,8 +140,36 @@ SQL;
         return $logRecordIds;
     }
 
-    public function getRecordLogDetails($id = [])
+    public function getRecordLogDetails($tableName = '', $priKey = [])
     {
-        
+        if (!$tableName) {
+            throw new \Exception('Required parameter for table name missing.');
+        }
+        if (preg_match('/^([a-zA-Z_]+\.)?[a-zA-Z_]+$/', $tableName) !== 1) {
+            throw new \Exception('Invalid identifier for table name.');
+        }
+        if (!$priKey) {
+            throw new \Exception('Required parameter for primary key missing.');
+        }
+        $sqlSelectCommand = <<<SQL
+SELECT *
+  FROM {$this->schema}.log_record lr LEFT JOIN {$this->schema}.log_record_detail lrd ON lr."id" = lrd.id_log_record
+  WHERE table_name = :table_name AND lr.rec_id=JSONB_BUILD_OBJECT(%param%)
+  ORDER BY lr.ts_change, lr.id
+SQL;
+        $param = '';
+        foreach ($priKey as $k => $v) {
+            if (preg_match('/^\d{1,}$/', $v) === 1) {
+                $param .= '\'' . $k . '\', ' . $v;
+            } else {
+                $param .= '\'' . $k . '\', \'' . $v . '\'';
+            }
+        }
+        $conn = $this->getConnection();
+        $sqlSelectCommand = str_replace('%param%', $param, $sqlSelectCommand);
+        $stmt = $conn->prepare($sqlSelectCommand);
+        $stmt->bindValue(':table_name', $tableName, \PDO::PARAM_STR);
+        $stmt->execute();
+        $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 }

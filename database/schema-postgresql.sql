@@ -8,7 +8,10 @@ CREATE TABLE "log_record" (
 PRIMARY KEY ("id")
 )
 WITHOUT OIDS;
-CREATE INDEX "log_record_tablename_idx" ON "log_record" ("table_name" ASC NULLS LAST);
+CREATE INDEX "log_record_tablename_idx" ON "testlogger"."log_record" USING btree (
+  "table_name" COLLATE "pg_catalog"."default" "pg_catalog"."text_ops" ASC NULLS LAST,
+  "rec_id"
+);
 COMMENT ON COLUMN "log_record"."id" IS 'Table''s primary key';
 COMMENT ON COLUMN "log_record"."table_name" IS 'Table name of record change';
 COMMENT ON COLUMN "log_record"."rec_id" IS 'The id of the record in the table_name that was changed, stored inside a json object. For composite primary keys, store the primary key value as multiple attributes inside the json object.';

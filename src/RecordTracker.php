@@ -35,4 +35,9 @@ class RecordTracker
             'newValues' => $newValues
         ]);
     }
+
+    public function getRecordLogDetails($tableName = '', $priKey = [])
+    {
+        $this->connection->getRecordLogDetails($tableName, $priKey);
+    }
 }

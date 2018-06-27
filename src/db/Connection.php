@@ -16,5 +16,5 @@ abstract class Connection
 
     public abstract function insertRecordLog($record = []);
 
-    public abstract function getRecordLogDetails($id = []);
+    public abstract function getRecordLogDetails($tableName = '', $priKey = []);
 }
