@@ -2,6 +2,10 @@
 
 namespace RecordTracker\db\config;
 
+/**
+ * Class Config
+ * @package RecordTracker\db\config
+ */
 final class Config
 {
     private $host;
@@ -77,6 +81,6 @@ final class Config
      */
     public function getSchema()
     {
-        return $this->schema;
+        return ($this->schema ? $this->schema . '.' : '');
     }
 }
