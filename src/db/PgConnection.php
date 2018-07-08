@@ -8,9 +8,11 @@ use PDO;
 use PDOException;
 
 /**
- * Class PgConnection
+ * Class PgConnection. This instantiates a Connection object for PostgreSQL database.
+ *
  * @package RecordTracker\db
  * @author Vasilis Lourdas dev@lourdas.eu
+ * @version 0.1.0
  *
  * This class encapsulates a PostgreSQL database connection.
  */
@@ -35,11 +37,15 @@ class PgConnection extends Connection
             throw new \Exception('The PDO pgsql extension is not loaded.');
         }
         $this->_connection = $this->_initConnection($config);
-        $this->schema = $config->getSchema();
+        /*
+         * if the config schema attribute is null, default to the public schema
+         */
+        $this->schema = $config->getSchema() ? $config->getSchema() : 'public';
     }
 
     /**
      * Initializes the PDO database connection object.
+     *
      * @param Config $config Parameters used for initializing the database connection
      *
      * @return PDO The PDO database object
@@ -49,9 +55,13 @@ class PgConnection extends Connection
     {
         if (!$this->_connection) {
             try {
+                /*
+                 * if not provided, default to 5432 port for PostgreSQL
+                 */
+                $port = $config->getPort() ? $config->getPort() : 5432;
                 $this->_connection = new PDO('pgsql:'
                     . 'host=' . $config->getHost() . ';'
-                    . 'port=' . $config->getPort() . ';'
+                    . 'port=' . $port . ';'
                     . 'dbname=' . $config->getDb() . ';'
                     . 'user=' . $config->getUser() . ';'
                     . 'password=' . $config->getPassword()
@@ -168,7 +178,6 @@ SQL;
                     $diffOldNew = array_diff_key($record['oldValues'], $record['newValues']);
                     $diffNewOld = array_diff_key($record['newValues'], $record['oldValues']);
                     $allKeys = array_keys(array_merge($diffOldNew, $diffNewOld, $record['oldValues']));
-                    $changedKeys = [];
                     foreach ($allKeys as $k) {
                         $oldValue = (isset($record['oldValues'][$k]) ? $record['oldValues'][$k] : null);
                         $newValue = (isset($record['newValues'][$k]) ? $record['newValues'][$k] : null);
@@ -210,6 +219,10 @@ SQL;
     /**
      * {@inheritdoc}
      *
+     * @param string $tableName
+     * @param array $priKey
+     *
+     * @return array
      * @throws Exception
      */
     public function getRecordLogDetails($tableName = '', $priKey = [])
@@ -225,7 +238,7 @@ SQL;
         }
         $sqlSelectCommand = <<<SQL
 SELECT *
-  FROM {$this->schema}log_record lr LEFT JOIN {$this->schema}.log_record_detail lrd ON lr."id" = lrd.id_log_record
+  FROM {$this->schema}log_record lr LEFT JOIN {$this->schema}log_record_detail lrd ON lr."id" = lrd.id_log_record
   WHERE table_name = :table_name AND lr.rec_id=JSONB_BUILD_OBJECT(%param%)
   ORDER BY lr.ts_change, lr.id
 SQL;
@@ -243,5 +256,40 @@ SQL;
         $stmt->bindValue(':table_name', $tableName, \PDO::PARAM_STR);
         $stmt->execute();
         $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        $data = [];
+        foreach ($result as $v) {
+            if (!isset($data['tableName'])) {
+                $data['tableName'] = $v['table_name'];
+            }
+            if (!isset($data['priKey'])) {
+                $data['priKey'] = $priKey;
+            }
+            if (!isset($data['records'])) {
+                $data['records'] = [];
+            }
+            if (!isset($data['records'][$v['id_log_record']])) {
+                $data['records'][$v['id_log_record']] = [];
+            }
+            if (!isset($data['records'][$v['id_log_record']]['recType'])) {
+                $data['records'][$v['id_log_record']]['recType'] = $v['rec_type'];
+            }
+            if (!isset($data['records'][$v['id_log_record']]['byUser'])) {
+                $data['records'][$v['id_log_record']]['byUser'] = $v['by_user'];
+            }
+            if (!isset($data['records'][$v['id_log_record']]['tsChange'])) {
+                $data['records'][$v['id_log_record']]['tsChange'] = $v['ts_change'];
+            }
+            if (!isset($data['records'][$v['id_log_record']]['attributes'])) {
+                $data['records'][$v['id_log_record']]['attributes'] = [];
+            }
+            if (!isset($data['records'][$v['id_log_record']]['attributes'][$v['col_name']])) {
+                $data['records'][$v['id_log_record']]['attributes'][$v['col_name']] = [
+                    'oldValue' => $v['old_value'],
+                    'newValue' => $v['new_value'],
+                ];
+            }
+        }
+
+        return $data;
     }
 }

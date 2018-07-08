@@ -20,7 +20,7 @@ class RecordTracker
     private $connection;
 
     /**
-     * RecordTracker constructor.
+     * RecordTracker constructor. Initializes the internal database object using the values in ```$config```.
      *
      * @param array $config
      *
@@ -36,13 +36,36 @@ class RecordTracker
     }
 
     /**
-     * @param string $tableName
-     * @param array $recId
-     * @param string $recType
-     * @param string $byUser
-     * @param array $oldValues
-     * @param array $newValues
-     * @param bool $calcDiffArray
+     * Insert a record log in the database. The record could be either new (create), changed (update) or old (delete).
+     *
+     * @param string tableName The database table name whose record log is saved.
+     * @param array recId The primary key of the row whose changes are saved. This is an array. For simple keys this
+     * could be
+     * ```php
+     * ['id' => 3]
+     * ```
+     * or for composite keys, this could be
+     * ```php
+     * [
+     *   'id_customer' => 3,
+     *   'id_order' => 5543
+     * ]
+     * ```
+     * @param string recType The type or record change. One of (**C**)reate, (**U**)update or (**D**)elete (1
+     *     character).
+     * @param string byUser A string representing the user that created the record change. This could be a username
+     * (since they are usually unique) or a user identifier. This should uniquely identify the user that caused
+     * the change.
+     * @param array oldValues This is an key-value based array that consists of the attribute names and their old
+     *     values
+     *   before the record update.
+     * @param array newValues This is an key-value based array that consists of the attribute names and their new
+     *     values
+     *   after the record update.
+     * @param bool $calcDiffArray If this is true, the RecordTracker class is responsible for generating the diff
+     * between the ```oldValues``` and the ```newValues``` parameters. If false, the caller must provide
+     * ```oldValues``` and ```newValues``` as arrays containing the attributes that were changed and their old and new
+     * values.
      *
      * @throws \Exception
      */
@@ -66,13 +89,28 @@ class RecordTracker
     }
 
     /**
-     * @param string $tableName
-     * @param array $priKey
+     * Retrieve the record changes for the row identified by ```$priKey``` in the ```$tableName``` database table as
+     * a PHP array.
      *
+     * @param string $tableName The table name where the requested record resides
+     * @param array $priKey The primary key of the requested row. This is an array. For simple keys this
+     * could be
+     * ```php
+     * ['id' => 3]
+     * ```
+     * or for composite keys, this could be
+     * ```php
+     * [
+     *   'id_customer' => 3,
+     *   'id_order' => 5543
+     * ]
+     * ```
+     *
+     * @return array A multidimensional array containing the record changes
      * @throws \Exception
      */
     public function getRecordLogDetails($tableName = '', $priKey = [])
     {
-        $this->connection->getRecordLogDetails($tableName, $priKey);
+        return $this->connection->getRecordLogDetails($tableName, $priKey);
     }
 }

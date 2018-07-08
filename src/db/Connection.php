@@ -3,9 +3,11 @@
 namespace RecordTracker\db;
 
 /**
- * Class Connection
+ * Class Connection. An abstract class that encapsulates the database connection and record tracking methods.
+ *
  * @package RecordTracker\db
  * @author Vasilis Lourdas dev@lourdas.eu
+ * @version 0.1.0
  *
  * Abstract class that encapsulates the database connection used in manipulating the record logs.
  */
