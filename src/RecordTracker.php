@@ -1,4 +1,9 @@
 <?php
+/**
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
 
 namespace RecordTracker;
 
@@ -38,8 +43,8 @@ class RecordTracker
     /**
      * Insert a record log in the database. The record could be either new (create), changed (update) or old (delete).
      *
-     * @param string tableName The database table name whose record log is saved.
-     * @param array recId The primary key of the row whose changes are saved. This is an array. For simple keys this
+     * @param string $tableName The database table name whose record log is saved.
+     * @param array $recId The primary key of the row whose changes are saved. This is an array. For simple keys this
      * could be
      * ```php
      * ['id' => 3]
@@ -51,15 +56,15 @@ class RecordTracker
      *   'id_order' => 5543
      * ]
      * ```
-     * @param string recType The type or record change. One of (**C**)reate, (**U**)update or (**D**)elete (1
+     * @param string $recType The type or record change. One of (**C**)reate, (**U**)update or (**D**)elete (1
      *     character).
-     * @param string byUser A string representing the user that created the record change. This could be a username
+     * @param string $byUser A string representing the user that created the record change. This could be a username
      * (since they are usually unique) or a user identifier. This should uniquely identify the user that caused
      * the change.
-     * @param array oldValues This is an key-value based array that consists of the attribute names and their old
+     * @param array $oldValues This is an key-value based array that consists of the attribute names and their old
      *     values
      *   before the record update.
-     * @param array newValues This is an key-value based array that consists of the attribute names and their new
+     * @param array $newValues This is an key-value based array that consists of the attribute names and their new
      *     values
      *   after the record update.
      * @param bool $calcDiffArray If this is true, the RecordTracker class is responsible for generating the diff
