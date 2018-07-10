@@ -13,7 +13,7 @@ use PDO;
 use PDOException;
 
 /**
- * Class PgConnection. This instantiates a Connection object for a PostgreSQL database.
+ * Class MySQLConnection. This instantiates a Connection object for a MySQL/MariaDB database.
  *
  * @package RecordTracker\db
  * @author Vasilis Lourdas dev@lourdas.eu
@@ -21,13 +21,8 @@ use PDOException;
  *
  * This class encapsulates a PostgreSQL database connection.
  */
-class PgConnection extends Connection
+class MySQLConnection extends Connection
 {
-    /**
-     * @var string $schema The database schema used
-     */
-    private $schema;
-
     /**
      * PgConnection constructor. Initializes the PostgreSQL database connection, using the parameters given in the
      * Config instance.
@@ -38,14 +33,10 @@ class PgConnection extends Connection
      */
     public function __construct(Config $config)
     {
-        if (!extension_loaded('pdo_pgsql')) {
-            throw new \Exception('The PDO pgsql extension is not loaded. The extension is required for this class.');
+        if (!extension_loaded('pdo_mysql')) {
+            throw new \Exception('The PDO mysql extension is not loaded. The extension is required for this class.');
         }
         $this->_connection = $this->_initConnection($config);
-        /*
-         * if the config schema attribute is null, default to the public schema for PostgreSQL
-         */
-        $this->schema = ($config->getSchema() ? $config->getSchema() : 'public.');
     }
 
     /**
@@ -61,10 +52,10 @@ class PgConnection extends Connection
         if (!$this->_connection) {
             try {
                 /*
-                 * if not provided, default to 5432 port for PostgreSQL
+                 * if not provided, default to 3306 port for MySQL/MariaDB
                  */
-                $port = $config->getPort() ? $config->getPort() : 5432;
-                $this->_connection = new PDO('pgsql:'
+                $port = $config->getPort() ? $config->getPort() : 3306;
+                $this->_connection = new PDO('mysql:'
                     . 'host=' . $config->getHost() . ';'
                     . 'port=' . $port . ';'
                     . 'dbname=' . $config->getDb() . ';'
@@ -106,7 +97,7 @@ class PgConnection extends Connection
         try {
             $ts = (new \DateTime())->format('Y-m-d H:i:s.u');
             $insertMasterLogCommand = <<<SQL
-INSERT INTO {$this->schema}log_record(table_name, rec_id, ts_change, rec_type, by_user)
+INSERT INTO log_record(table_name, rec_id, ts_change, rec_type, by_user)
   VALUES (:table_name, :rec_id, :ts_change, :rec_type, :by_user)
 RETURNING id
 SQL;
@@ -208,7 +199,6 @@ SQL;
                                 throw new PDOException('Detail log record id could not be returned, error: '
                                     . $stmtDetail->errorCode());
                             }
-                            $logRecordIds[$masterId][] = $detailLogId[0];
                         }
                     }
                 }
@@ -244,7 +234,7 @@ SQL;
         }
         $sqlSelectCommand = <<<SQL
 SELECT *
-  FROM {$this->schema}log_record lr LEFT JOIN {$this->schema}log_record_detail lrd ON lr."id" = lrd.id_log_record
+  FROM log_record lr LEFT JOIN log_record_detail lrd ON lr."id" = lrd.id_log_record
   WHERE table_name = :table_name AND lr.rec_id=JSONB_BUILD_OBJECT(%param%)
   ORDER BY lr.ts_change, lr.id
 SQL;
@@ -255,10 +245,7 @@ SQL;
             } else {
                 $param .= '\'' . $k . '\', \'' . $v . '\'';
             }
-            $param .= ', ';
         }
-        // strip the last space and comma characters
-        $param = mb_strcut($param, 0, -2);
         $conn = $this->getConnection();
         $sqlSelectCommand = str_replace('%param%', $param, $sqlSelectCommand);
         $stmt = $conn->prepare($sqlSelectCommand);

@@ -16,6 +16,8 @@ namespace RecordTracker\db\config;
  */
 final class Config
 {
+    /** @var string The database connection type, one of 'mysql', 'pgsql', etc. */
+    private $dbType;
     /** @var string $host The database host name */
     private $host;
     /** @var string $user The username used for the database connection */
@@ -36,6 +38,7 @@ final class Config
      *
      * @param array $config The parameters for connecting to a database. This is a key-value array.
      * The required attributes are:
+     * * dbType: The database system, one of 'mysql', 'pgsql', etc.
      * * host: The database host name
      * * user: The username used for the database connection
      * * password: The password of the user for the database connection
@@ -50,10 +53,11 @@ final class Config
     public function __construct($config = [])
     {
         if (!$config) {
-            throw new \Exception('The configuration is empty. Please provide the required configuration '
-                . 'parameters (host, user, password, db).');
+            throw new \Exception('The configuration for the Config instance is empty. Please provide '
+                . 'the required configuration parameters (dbType, host, user, password, db).');
         }
         $attrs = [
+            'dbType',
             'host',
             'user',
             'password',
@@ -61,10 +65,12 @@ final class Config
         ];
         foreach ($attrs as $attr) {
             if (!isset($config[$attr])) {
-                throw new \Exception('Required parameter "' . $attr . '" missing!');
+                throw new \Exception('Required parameter "' . $attr . '" missing for Config instance!');
             }
             $this->$attr = $config[$attr];
         }
+        // set the schema if it is set in $config
+        $this->schema = ($config['schema'] ? $config['schema'] : '');
     }
 
     /**
@@ -125,5 +131,16 @@ final class Config
     public function getSchema()
     {
         return ($this->schema ? $this->schema . '.' : '');
+    }
+
+    /**
+     * Returns the database type. Currently supported database systems are MySQL/MariaDB ('mysql')
+     * and PostgreSQL ('pgsql').
+     *
+     * @return string The database type
+     */
+    public function getDbType()
+    {
+        return $this->dbType;
     }
 }

@@ -9,6 +9,7 @@ namespace RecordTracker;
 
 use RecordTracker\db\config\Config;
 use RecordTracker\db\Connection;
+use RecordTracker\db\MySQLConnection;
 use RecordTracker\db\PgConnection;
 
 /**
@@ -36,8 +37,17 @@ class RecordTracker
         if (!$config) {
             throw new \Exception('Required database configuration missing.');
         }
-        $config = new Config($config);
-        $this->connection = new PgConnection($config);
+        $conf = new Config($config);
+        switch ($config['dbType']) {
+            case 'mysql':
+                $this->connection = new MySQLConnection($conf);
+                break;
+            case 'pgsql':
+                $this->connection = new PgConnection($conf);
+                break;
+            default:
+                throw new \Exception('Database type \'' . $config['dbType'] . '\' not supported.');
+        }
     }
 
     /**
@@ -72,6 +82,11 @@ class RecordTracker
      * ```oldValues``` and ```newValues``` as arrays containing the attributes that were changed and their old and new
      * values.
      *
+     * @return array An array of identifiers for the inserted log records, this would be of the form:
+     * ```php
+     * [43 => [554, 555, 556]]
+     * ```
+     * where 43 is the master log record and 554, 555, 556 are the identifiers for each attribute change record
      * @throws \Exception
      */
     public function insertRecordLog(
@@ -83,7 +98,7 @@ class RecordTracker
         $newValues = [],
         $calcDiffArray = true
     ) {
-        $recId = $this->connection->insertRecordLog([
+        return $this->connection->insertRecordLog([
             'tableName' => $tableName,
             'recId' => $recId,
             'recType' => $recType,
