@@ -12,7 +12,7 @@
     "minimum-stability": "stable",
     "require": {
         "php": ">=5.6.0",
-        "ext-PDO": "Required for database connection"
+        "ext-PDO": "*"
     },
     "autoload": {
         "psr-4": {
