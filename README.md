@@ -18,3 +18,10 @@ The attribute changes are stored like this:
 - Column name
 - Old value
 - New value
+
+See [Usage](USAGE.md) for details about how to use the library and [Changes](CHANGES.md) for the changelog. 
+
+The library is distributed under [Mozilla Public License 2.0 (MPL-2)](https://www.mozilla.org/en-US/MPL/2.0/).
+
+## News
+2018-07-11: Initial release.
