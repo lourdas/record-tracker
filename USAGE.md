@@ -25,7 +25,7 @@ composer require lourdas/record-tracker
 ```
 
 ### Database schema installation
-Depending on the database used, you will have to execute either `schema-mysql.sql` for MySQL/MariaDB or `schema-postgresql.sql` for PostgreSQL.
+Depending on the database used, you will have to execute either `schema-mysql.sql` for MySQL/MariaDB or `schema-postgresql.sql` for PostgreSQL. The files are inside the `database` folder of the package.
 This contains the necessary tables (`log_record` and `log_record_detail`) that will track the changes for your records.
 
 ### Class usage
@@ -61,6 +61,7 @@ Internally the class instantiates a PDO database class instance for the respecti
 #### `RecordTracker` methods
 Currently, the class is pretty basic. The only supported methods are:
 
+##### `insertRecordLog`
 ```php
 function insertRecordLog(
     $tableName = '',
@@ -86,20 +87,25 @@ The parameters are:
 * `$newValues` This is an key-value based array that consists of the attribute names and their new values after the record update.
 * `$calcDiffArray` If this is true, the `RecordTracker` class is responsible for generating the diff between the `oldValues` and the `newValues` parameters. If false, the caller must provide `oldValues` and `newValues` as arrays containing the attributes that were changed and their old and new values.
 
+Example:
+```php
+$rt->insertRecordLog('customer', ['id'=> 100], 'C', 'a_user', [], ['name' => 'Foo', 'lastname' => 'Bar']);
+```
 In case something goes wrong (wrong parameters, database error), an exception is thrown and no record in either table is inserted in the database. The database statements are wrapped inside a transaction, so it either succeeds or fails completely.
 
+##### `getRecordLogDetails`
 ```php
 function getRecordLogDetails($tableName = '', $priKey = [])
 ```
 The method returns an array containing all record changes for the specified `$tableName` and primary key (`$priKey`). So if you want to look up any changes for the `order` table and for the primary key `customer_id=3` and `item_id=442`, you would call the method as:
 
 ```php
-$changes = getRecordLogDetails('order', ['customer_id' => 3, 'item_id' => 442']);
+$changes = $rt->getRecordLogDetails('order', ['customer_id' => 3, 'item_id' => 442']);
 ```
 The method would return an array something like:
 ```php
 6 => [
-    'recType' => 'C'
+    'recType' => 'U'
     'byUser' => 'a user'
     'tsChange' => '2018-07-10 20:05:43'
     'attributes' => [ 
@@ -110,7 +116,7 @@ The method would return an array something like:
     ]
 ],
 7 => [
-    'recType' => 'C'
+    'recType' => 'U'
     'byUser' => 'another user'
     'tsChange' => '2018-07-10 20:09:22'
     'attributes' => [
@@ -121,4 +127,4 @@ The method would return an array something like:
     ]
 ]
 ```
-Then you are free to display the result as you see fit.
+Then you are free to use the result as you see fit.
