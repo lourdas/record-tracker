@@ -17,7 +17,7 @@ use PDOException;
  *
  * @package RecordTracker\db
  * @author Vasilis Lourdas dev@lourdas.eu
- * @version 0.1.0
+ * @version 0.2.0
  *
  * This class encapsulates a PostgreSQL database connection.
  */
@@ -64,6 +64,7 @@ class PgConnection extends Connection
                  * if not provided, default to 5432 port for PostgreSQL
                  */
                 $port = $config->getPort() ? $config->getPort() : 5432;
+                // PostgreSQL requires the username and password to be inside the DSN string
                 $this->_connection = new PDO('pgsql:'
                     . 'host=' . $config->getHost() . ';'
                     . 'port=' . $port . ';'

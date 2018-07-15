@@ -16,7 +16,7 @@ use RecordTracker\db\PgConnection;
  * Class RecordTracker
  * @package RecordTracker
  * @author Vasilis Lourdas dev@lourdas.eu
- * @version 0.1.0
+ * @version 0.2.0
  */
 class RecordTracker
 {

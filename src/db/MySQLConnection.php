@@ -17,7 +17,7 @@ use PDOException;
  *
  * @package RecordTracker\db
  * @author Vasilis Lourdas dev@lourdas.eu
- * @version 0.1.0
+ * @version 0.2.0
  *
  * This class encapsulates a PostgreSQL database connection.
  */
@@ -55,13 +55,13 @@ class MySQLConnection extends Connection
                  * if not provided, default to 3306 port for MySQL/MariaDB
                  */
                 $port = $config->getPort() ? $config->getPort() : 3306;
+                // MySQL requires the username and password to be outside the DSN string
                 $this->_connection = new PDO('mysql:'
                     . 'host=' . $config->getHost() . ';'
                     . 'port=' . $port . ';'
                     . 'dbname=' . $config->getDb() . ';'
-                    . 'user=' . $config->getUser() . ';'
-                    . 'password=' . $config->getPassword()
-                );
+                    . 'charset=utf8'
+                    , $config->getUser(), $config->getPassword());
                 $this->_connection->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
             } catch (PDOException $e) {
                 throw new Exception('Cannot open database connection: ' . $e->getMessage());
@@ -99,7 +99,6 @@ class MySQLConnection extends Connection
             $insertMasterLogCommand = <<<SQL
 INSERT INTO log_record(table_name, rec_id, ts_change, rec_type, by_user)
   VALUES (:table_name, :rec_id, :ts_change, :rec_type, :by_user)
-RETURNING id
 SQL;
             $stmt = $conn->prepare($insertMasterLogCommand);
             $stmt->bindValue(':table_name', $record['tableName'], PDO::PARAM_STR);
@@ -108,16 +107,18 @@ SQL;
             $stmt->bindValue(':rec_type', $record['recType'], PDO::PARAM_STR);
             $stmt->bindValue(':by_user', $record['byUser'], PDO::PARAM_STR);
             $stmt->execute();
-            $masterId = $stmt->fetch(PDO::FETCH_NUM);
+            // get the last inserted auto_increment id
+            $stmtId = $conn->prepare('SELECT LAST_INSERT_ID()');
+            $stmtId->execute();
+            $masterId = $stmtId->fetch(PDO::FETCH_NUM);
             if ($masterId === false) {
                 throw new PDOException('Master log record id could not be returned, error: ' . $stmt->errorCode());
             } else {
                 $masterId = $masterId[0];
                 $logRecordIds[$masterId] = [];
                 $insertDetailLogCommand = <<<SQL
-INSERT INTO {$this->schema}log_record_detail(id_log_record, col_name, old_value, new_value)
+INSERT INTO log_record_detail(id_log_record, col_name, old_value, new_value)
   VALUES (:id_log_record, :col_name, :old_value, :new_value)
-RETURNING id
 SQL;
                 $stmtDetail = $conn->prepare($insertDetailLogCommand);
                 $stmtDetail->bindValue(':id_log_record', $masterId, PDO::PARAM_INT);
@@ -163,7 +164,10 @@ SQL;
                                 break;
                         }
                         $stmtDetail->execute();
-                        $detailLogId = $stmtDetail->fetch(PDO::FETCH_NUM);
+                        // get the last inserted auto_increment id
+                        $stmtDetailId = $conn->prepare('SELECT LAST_INSERT_ID()');
+                        $stmtDetailId->execute();
+                        $detailLogId = $stmtDetailId->fetch(PDO::FETCH_NUM);
                         if ($detailLogId === false) {
                             throw new PDOException('Detail log record id could not be returned, error: '
                                 . $stmtDetail->errorCode());
@@ -194,7 +198,10 @@ SQL;
                                     break;
                             }
                             $stmtDetail->execute();
-                            $detailLogId = $stmtDetail->fetch(PDO::FETCH_NUM);
+                            // get the last inserted auto_increment id
+                            $stmtDetailId = $conn->prepare('SELECT LAST_INSERT_ID()');
+                            $stmtDetailId->execute();
+                            $detailLogId = $stmtDetailId->fetch(PDO::FETCH_NUM);
                             if ($detailLogId === false) {
                                 throw new PDOException('Detail log record id could not be returned, error: '
                                     . $stmtDetail->errorCode());
@@ -234,8 +241,8 @@ SQL;
         }
         $sqlSelectCommand = <<<SQL
 SELECT *
-  FROM log_record lr LEFT JOIN log_record_detail lrd ON lr."id" = lrd.id_log_record
-  WHERE table_name = :table_name AND lr.rec_id=JSONB_BUILD_OBJECT(%param%)
+  FROM log_record lr LEFT JOIN log_record_detail lrd ON lr.`id` = lrd.id_log_record
+  WHERE table_name = :table_name AND JSON_CONTAINS(JSON_OBJECT(%param%), rec_id)
   ORDER BY lr.ts_change, lr.id
 SQL;
         $param = '';
@@ -245,7 +252,10 @@ SQL;
             } else {
                 $param .= '\'' . $k . '\', \'' . $v . '\'';
             }
+            $param .= ', ';
         }
+        // strip the last space and comma characters
+        $param = mb_strcut($param, 0, -2);
         $conn = $this->getConnection();
         $sqlSelectCommand = str_replace('%param%', $param, $sqlSelectCommand);
         $stmt = $conn->prepare($sqlSelectCommand);

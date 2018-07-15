@@ -12,7 +12,7 @@ namespace RecordTracker\db;
  *
  * @package RecordTracker\db
  * @author Vasilis Lourdas dev@lourdas.eu
- * @version 0.1.0
+ * @version 0.2.0
  *
  * Abstract class that encapsulates the database connection used in manipulating the record logs.
  */
