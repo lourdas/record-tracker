@@ -12,7 +12,7 @@ namespace RecordTracker\db\config;
  *
  * @package RecordTracker\db\config
  * @author Vasilis Lourdas dev@lourdas.eu
- * @version 0.1.0
+ * @version 0.2.0
  */
 final class Config
 {
@@ -70,7 +70,9 @@ final class Config
             $this->$attr = $config[$attr];
         }
         // set the schema if it is set in $config
-        $this->schema = ($config['schema'] ? $config['schema'] : '');
+        $this->schema = (isset($config['schema']) ? $config['schema'] : '');
+        // set the port if it is set in $config
+        $this->port = (isset($config['port']) ? $config['port'] : null);
     }
 
     /**

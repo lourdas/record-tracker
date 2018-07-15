@@ -5,7 +5,8 @@ CREATE TABLE `log_record` (
   `ts_change` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp() COMMENT 'Timestamp of change',
   `rec_type` char(1) NOT NULL COMMENT '(I)nsert, (U)pdate or (D)elete',
   `by_user` varchar(100) NOT NULL COMMENT 'Username that created the change',
-  PRIMARY KEY (`id`) USING BTREE
+  PRIMARY KEY (`id`) USING BTREE,
+  CHECK (JSON_VALID(`rec_id`))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 CREATE TABLE `log_record_detail` (
